@@ -1,14 +1,6 @@
 # Superstore Advanced Analytics
 
 ## 1. Business Problem & Context
-## 2. Executive-Level Challenges
-## 3. Business Questions to Analytics Mapping
-## 4. Key Business KPIs
-## 5. Decisions Enabled by This Project
-## 6. Analytics Roadmap
-## 7. Success Criteria & Risks
-
-## 1. Business Problem & Context
 
 This project simulates a real-world retail analytics engagement for a large Superstore
 operating across multiple regions, product categories, and customer segments.
