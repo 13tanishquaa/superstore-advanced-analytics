@@ -1,30 +1,96 @@
-\# Superstore Advanced Analytics
+# Superstore Advanced Analytics
 
+## 1. Business Problem & Context
+## 2. Executive-Level Challenges
+## 3. Business Questions to Analytics Mapping
+## 4. Key Business KPIs
+## 5. Decisions Enabled by This Project
+## 6. Analytics Roadmap
+## 7. Success Criteria & Risks
 
+## 1. Business Problem & Context
 
-\## Objective
+This project simulates a real-world retail analytics engagement for a large Superstore
+operating across multiple regions, product categories, and customer segments.
 
-End-to-end exploratory data analysis and predictive modeling on Superstore sales data,
+Although overall sales have been increasing, the business is experiencing declining
+or stagnant profitability. Leadership suspects that inefficient discount strategies,
+poor inventory planning, and lack of customer-level insights are eroding margins.
 
-following industry-grade data science practices.
+Currently, decisions related to pricing, promotions, inventory, and marketing are made
+reactively, with limited predictive or customer-centric analytics.
 
+## 2. Executive-Level Challenges
 
+From a leadership perspective, the business faces the following challenges:
 
-\## Project Structure
+1. Profit is declining despite sales growth, with limited visibility into root causes.
+2. Inventory overstocking and understocking are increasing operational costs and lost sales.
+3. Customers are treated uniformly, with no clear understanding of loyalty or lifetime value.
+4. Discounts are applied broadly without understanding their true impact on demand and profit.
+5. The organization lacks an executive-level dashboard for decision-ready insights.
 
-data/              → raw and processed datasets  
+## 3. Business Questions to Analytics Mapping
 
-notebooks/         → EDA and modeling notebooks  
+| Business Question | Analytics Question | Project Phase |
+|------------------|-------------------|---------------|
+| Why is profit declining? | Which products, regions, and discounts drive negative margins? | EDA, Statistical Analysis |
+| How much inventory should we stock? | Can future demand be forecasted accurately? | Sales Forecasting |
+| Who are our best customers? | How can customers be segmented by value and behavior? | Customer Segmentation |
+| Which customers are at risk of leaving? | Can churn probability be predicted? | Churn Prediction |
+| How do we increase revenue per customer? | Can we recommend relevant products? | Recommendation System |
+| Are discounts actually profitable? | What discount levels maximize profit? | Profit Optimization |
 
-visualizations/    → saved plots and charts  
+## 4. Key Business KPIs
 
-requirements.txt   → Python dependencies  
+The project evaluates success using business-aligned metrics:
 
+- Total Sales Revenue
+- Total Profit and Profit Margin
+- Discount Rate and Discount Effectiveness
+- Customer Lifetime Value (historical proxy)
+- Customer Churn Rate
+- Demand Forecast Error (translated into inventory impact)
+- Revenue and Profit Contribution by Segment
 
+## 5. Decisions Enabled by This Project
 
-\## Current Status
+This project enables leadership to make data-driven decisions such as:
 
-Phase 1 — Exploratory Data Analysis completed.
+- Reducing or restructuring discounts on low-margin products
+- Prioritizing high-value customer segments for retention campaigns
+- Optimizing inventory levels to reduce stockouts and excess inventory
+- Deploying proactive churn prevention strategies
+- Increasing average order value through product recommendations
+
+## 6. Analytics Roadmap
+
+The project follows an end-to-end analytics lifecycle aligned with real-world practice:
+
+- Exploratory Data Analysis → Identify revenue and profit leaks
+- Data Preprocessing → Production-ready data pipelines
+- Feature Engineering → Business-driven signals
+- Statistical Analysis → Hypothesis validation
+- Sales Forecasting → Inventory planning
+- Customer Segmentation → Marketing strategy
+- Churn Prediction → Retention optimization
+- Product Recommendation → Upsell and cross-sell
+- Profit Optimization → Pricing and discount strategy
+- Executive Dashboard → Decision-ready insights
+
+## 7. Success Criteria & Risks
+
+Success Criteria:
+- Clear identification of profit-draining behaviors
+- Statistically validated insights
+- Interpretable predictive models
+- Actionable recommendations tied to business decisions
+- Executive-friendly dashboard
+
+Assumptions and Risks:
+- Historical data reflects future behavior
+- Churn must be inferred due to lack of explicit labels
+- External factors (competition, seasonality) are not fully captured
 
 
 
