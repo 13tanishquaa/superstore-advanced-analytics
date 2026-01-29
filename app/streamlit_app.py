@@ -2,6 +2,12 @@ import streamlit as st
 import pandas as pd
 import joblib
 import matplotlib.pyplot as plt
+import requests
+import plotly.express as px
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
 
 # ------------------------------------------------------
 # Page Configuration
@@ -30,10 +36,10 @@ st.markdown(
 # ------------------------------------------------------
 @st.cache_data
 def load_data():
-    df = pd.read_csv("data/processed/featured_data.csv")
-    df['Order Date'] = pd.to_datetime(df['Order Date'])
-    segments = pd.read_csv("data/processed/customer_segments.csv")
+    df = pd.read_csv(BASE_DIR / "data" / "processed" / "featured_data.csv")
+    segments = pd.read_csv(BASE_DIR / "data" / "processed" / "customer_segments.csv")
     return df, segments
+
 
 @st.cache_resource
 def load_model():
@@ -52,45 +58,116 @@ page = st.sidebar.radio(
 )
 
 # ------------------------------------------------------
-# EXECUTIVE OVERVIEW
+# EXECUTIVE OVERVIEW (CLIENT-READY)
 # ------------------------------------------------------
 if page == "Executive Overview":
 
-    st.subheader("Executive Overview")
+    st.title("📊 Executive Business Overview")
+    st.caption("High-level performance snapshot for leadership decision-making")
 
-    monthly = (
-        df.groupby(pd.Grouper(key='Order Date', freq='ME'))
-        .agg({'Sales': 'sum', 'Profit': 'sum', 'Discount': 'mean'})
+    # --------------------------------------------------
+    # Monthly Aggregation (Business Standard)
+    # --------------------------------------------------
+    df["Order Date"] = pd.to_datetime(df["Order Date"])
+
+    monthly_summary = (
+        df
+        .groupby(pd.Grouper(key="Order Date", freq="ME"))
+        .agg(
+            Sales=("Sales", "sum"),
+            Profit=("Profit", "sum"),
+            Avg_Discount=("Discount", "mean"),
+            Quantity=("Quantity", "sum")
+        )
         .reset_index()
     )
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total Sales", f"${monthly['Sales'].sum():,.0f}")
-    col2.metric("Total Profit", f"${monthly['Profit'].sum():,.0f}")
-    col3.metric("Avg Discount", f"{monthly['Discount'].mean():.2%}")
+    # --------------------------------------------------
+    # KPI CARDS (EXECUTIVE LEVEL)
+    # --------------------------------------------------
+    total_sales = monthly_summary["Sales"].sum()
+    total_profit = monthly_summary["Profit"].sum()
+    avg_discount = monthly_summary["Avg_Discount"].mean()
+    profit_margin = (total_profit / total_sales) * 100
 
-    st.subheader("Sales & Profit Trend")
+    col1, col2, col3, col4 = st.columns(4)
 
-    fig, ax = plt.subplots(figsize=(12, 4))
+    col1.metric("💰 Total Sales", f"${total_sales:,.0f}")
+    col2.metric("📈 Total Profit", f"${total_profit:,.0f}")
+    col3.metric("🏷 Avg Discount", f"{avg_discount:.1%}")
+    col4.metric("📊 Profit Margin", f"{profit_margin:.1f}%")
 
-    ax.plot(monthly['Order Date'], monthly['Sales'], label="Sales", marker='o')
-    ax.plot(monthly['Order Date'], monthly['Profit'], label="Profit", linestyle='--')
+    st.markdown("---")
 
-    ax.set_xlabel("Month")
-    ax.set_ylabel("Amount")
-    ax.set_title("Monthly Sales and Profit Trend")
-    ax.legend()
+    # --------------------------------------------------
+    # SALES vs PROFIT TREND (INTERACTIVE)
+    # --------------------------------------------------
+    st.subheader("📈 Sales & Profit Trend (Monthly)")
 
-    st.pyplot(fig)
+    import plotly.graph_objects as go
 
+    fig = go.Figure()
 
-    st.markdown("### Executive Insights")
+    fig.add_trace(
+        go.Scatter(
+            x=monthly_summary["Order Date"],
+            y=monthly_summary["Sales"],
+            name="Sales",
+            mode="lines+markers",
+            line=dict(width=3)
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=monthly_summary["Order Date"],
+            y=monthly_summary["Profit"],
+            name="Profit",
+            mode="lines+markers",
+            yaxis="y2",
+            line=dict(width=3, dash="dot")
+        )
+    )
+
+    fig.update_layout(
+        title="Monthly Sales vs Profit Performance",
+        xaxis_title="Month",
+        yaxis=dict(title="Sales"),
+        yaxis2=dict(
+            title="Profit",
+            overlaying="y",
+            side="right"
+        ),
+        template="plotly_white",
+        height=500,
+        legend=dict(orientation="h", y=-0.25)
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    # --------------------------------------------------
+    # EXECUTIVE INSIGHTS (NON-TECHNICAL)
+    # --------------------------------------------------
+    st.subheader("🧠 Key Executive Insights")
+
     st.markdown("""
-    - 📈 **Sales show seasonal patterns**, enabling proactive inventory planning  
-    - 🎯 **A small customer segment drives a large share of revenue**  
-    - ⚠️ **Higher discounts correlate with lower profit margins**
+    - Sales show **clear seasonal patterns**, useful for inventory planning  
+    - Profit does **not always increase proportionally** with sales  
+    - Higher discount periods are associated with **margin pressure**  
+    - Opportunity exists to **optimize discount strategy** without hurting revenue
     """)
 
+    # --------------------------------------------------
+    # STRATEGIC ACTIONS
+    # --------------------------------------------------
+    st.subheader("🎯 Recommended Business Actions")
+
+    st.markdown("""
+    ✅ Align inventory with seasonal demand patterns  
+    ✅ Limit aggressive discounting during high-demand months  
+    ✅ Focus promotions on **low-margin periods**  
+    ✅ Monitor profit alongside sales, not independently
+    """)
 
 # ------------------------------------------------------
 # SALES FORECASTING
