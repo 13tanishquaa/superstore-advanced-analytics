@@ -1,33 +1,25 @@
-# ======================================================
-# RetailPulse — Executive Retail Analytics Platform
-# ======================================================
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 from pathlib import Path
-import joblib
+
+# PATHS
 BASE_DIR = Path(__file__).resolve().parent.parent
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data"
+PROCESSED_DIR = DATA_DIR / "processed"
+RESULTS_DIR = DATA_DIR / "results"
 
-
-# ======================================================
 # APP CONFIG
-# ======================================================
 st.set_page_config(
     page_title="RetailPulse",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# ======================================================
-# GLOBAL CSS (HIDE STREAMLIT UI + EXECUTIVE THEME)
-# ======================================================
+# CSS
 st.markdown("""
 <style>
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
+#MainMenu, footer, header {visibility: hidden;}
 
 .kpi-card {
     background: linear-gradient(135deg, #161b22, #1f2630);
@@ -39,7 +31,6 @@ header {visibility: hidden;}
 .kpi-label {
     font-size: 12px;
     color: #9aa0a6;
-    letter-spacing: 0.05em;
     text-transform: uppercase;
 }
 
@@ -47,31 +38,24 @@ header {visibility: hidden;}
     font-size: 30px;
     font-weight: 600;
     color: #ffffff;
-    margin-top: 6px;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ======================================================
 # SESSION STATE
-# ======================================================
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
 if "page" not in st.session_state:
     st.session_state.page = "Executive"
 
-# ======================================================
-# LOGIN PAGE
-# ======================================================
+# LOGIN
 def login_page():
     st.markdown("<h1 style='text-align:center;'>RetailPulse</h1>", unsafe_allow_html=True)
     st.markdown(
         "<p style='text-align:center;color:#9aa0a6;'>Executive Retail Intelligence Platform</p>",
         unsafe_allow_html=True
     )
-
-    st.markdown("<br>", unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([1,1,1])
     with col2:
@@ -89,367 +73,364 @@ if not st.session_state.authenticated:
     login_page()
     st.stop()
 
-# ======================================================
-# DATA LOADING (SINGLE SOURCE OF TRUTH)
-# ======================================================
-monthly_metrics = pd.read_csv(
-    PROJECT_ROOT / "data/processed/executive_metrics_monthly.csv",
-    parse_dates=["Order_Month"]
-)
+# DATA LOADING 
+@st.cache_data
+def load_data():
+    return {
+        "executive": pd.read_csv(
+            PROCESSED_DIR / "executive_metrics_monthly.csv",
+            parse_dates=["Order_Month"]
+        ),
+        "sales": pd.read_csv(
+            PROCESSED_DIR / "featured_data.csv",
+            parse_dates=["Order Date"]
+        ),
+        "forecast": pd.read_csv(
+            RESULTS_DIR / "predictions.csv",
+            parse_dates=["Order Date"]
+        ),
+        "customers": pd.read_csv(
+            PROCESSED_DIR / "customer_business_insights.csv"
+        ),
+        "customer_kpis": pd.read_csv(
+            PROCESSED_DIR / "customer_kpis.csv"
+        )
+    }
 
+data = load_data()
 
-# Latest month = executive snapshot
-latest = monthly_metrics.iloc[-1]
-
-
-# Other datasets
-rfm = pd.read_csv(BASE_DIR / "data/processed/customer_rfm.csv")
-
-# ======================================================
-# SIDEBAR NAVIGATION
-# ======================================================
+# SIDEBAR
 with st.sidebar:
     st.markdown("## RetailPulse")
-    st.markdown(
-        "<p style='color:#9aa0a6;font-size:13px;'>Executive Analytics</p>",
-        unsafe_allow_html=True
-    )
     st.markdown("<hr>", unsafe_allow_html=True)
 
-    if st.button("Executive Overview", use_container_width=True):
-        st.session_state.page = "Executive"
-
-    if st.button("Sales Performance", use_container_width=True):
-        st.session_state.page = "Sales"
-
-    if st.button("Sales Forecasting", use_container_width=True):
-        st.session_state.page = "Forecast"
-
-    if st.button("Customer Insights", use_container_width=True):
-        st.session_state.page = "Customers"
+    for page in ["Executive", "Sales", "Forecast", "Customers"]:
+        if st.button(page + " Overview", use_container_width=True):
+            st.session_state.page = page
 
     st.markdown("<hr>", unsafe_allow_html=True)
-
     if st.button("Logout", use_container_width=True):
         st.session_state.authenticated = False
         st.rerun()
 
-# ======================================================
-# KPI CARD COMPONENT
-# ======================================================
-def kpi(label, value, delta=None):
-    delta_html = ""
-    if delta is not None:
-        color = "#16a34a" if delta >= 0 else "#dc2626"
-        sign = "+" if delta >= 0 else ""
-        delta_html = f"""
-        <div style="font-size:13px;color:{color};margin-top:6px;">
-            {sign}{delta*100:.1f}% MoM
-        </div>
-        """
-
+# KPI COMPONENT
+def kpi(label, value):
     st.markdown(
         f"""
         <div class="kpi-card">
             <div class="kpi-label">{label}</div>
             <div class="kpi-value">{value}</div>
-            {delta_html}
         </div>
         """,
         unsafe_allow_html=True
     )
 
-# ======================================================
-# PAGE 1 — EXECUTIVE OVERVIEW
-# ======================================================
+# EXECUTIVE OVERVIEW
 def executive_page():
     st.markdown("## Executive Overview")
-    st.caption("High-level view of business health and momentum")
+    st.caption("Business health, momentum, and profitability")
 
-    c1, c2, c3, c4, c5 = st.columns(5)
+    df = data["executive"]
+    latest = df.iloc[-1]
 
-    with c1:
-        kpi(
-            "Total Sales",
-            f"${latest['total_sales']:,.0f}",
-            latest["sales_mom"]
-        )
+    c1, c2, c3, c4 = st.columns(4)
+    kpi("Total Sales", f"${latest['total_sales']:,.0f}")
+    kpi("Total Profit", f"${latest['total_profit']:,.0f}")
+    kpi("Profit Margin", f"{latest['profit_margin']*100:.2f}%")
+    kpi("Sales MoM Growth", f"{latest['sales_mom']*100:.1f}%")
 
-    with c2:
-        kpi(
-            "Total Profit",
-            f"${latest['total_profit']:,.0f}",
-            latest["profit_mom"]
-        )
-
-    with c3:
-        kpi(
-            "Profit Margin",
-            f"{latest['profit_margin'] * 100:.2f}%"
-        )
-
-    with c4:
-        kpi(
-            "Sales MoM Growth",
-            f"{latest['sales_mom'] * 100:.1f}%"
-        )
-
-    with c5:
-        kpi(
-            "Profit MoM Growth",
-            f"{latest['profit_mom'] * 100:.1f}%"
-        )
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # -------------------------------
-    # Indexed trend (single-axis, exec-safe)
-    # -------------------------------
-    df = monthly_metrics.copy()
-
-    df["Sales_Index"] = df["total_sales"] / df["total_sales"].iloc[0] * 100
-    df["Profit_Index"] = df["total_profit"] / df["total_profit"].iloc[0] * 100
+    df["Sales_Index"] = df.total_sales / df.total_sales.iloc[0] * 100
+    df["Profit_Index"] = df.total_profit / df.total_profit.iloc[0] * 100
 
     fig = px.line(
         df,
         x="Order_Month",
         y=["Sales_Index", "Profit_Index"],
         template="plotly_dark",
-        title="Revenue vs Profit Growth (Indexed to Base Period)"
+        title="Growth Trajectory (Indexed)"
     )
-
     fig.update_traces(line=dict(width=3))
-    fig.update_layout(
-        yaxis_title="Index (Base = 100)",
-        hovermode="x unified",
-        legend_title_text=""
-    )
-
     st.plotly_chart(fig, use_container_width=True)
-# ======================================================
-# PAGE 2 — SALES PERFORMANCE
-# ======================================================
+
+# SALES PERFORMANCE
 def sales_page():
     st.markdown("## Sales Performance")
-    st.caption("Operational drivers behind revenue and profitability")
 
-    df = pd.read_csv(BASE_DIR / "data/processed/featured_data.csv")
-    df["Order Date"] = pd.to_datetime(df["Order Date"])
+    df = data["sales"]
 
-    category = df.groupby("Category").agg(
-        Sales=("Sales", "sum"),
-        Profit=("Profit", "sum")
-    ).reset_index()
+    # EXECUTIVE KPIs
+    total_sales = df["Sales"].sum()
+    total_profit = df["Profit"].sum()
+    profit_margin = total_profit / total_sales
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Total Revenue", f"${total_sales:,.0f}")
+    c2.metric("Total Profit", f"${total_profit:,.0f}")
+    c3.metric("Overall Margin", f"{profit_margin*100:.1f}%")
+
+    st.caption(
+        "Revenue shows scale, profit shows health, and margin reflects pricing efficiency."
+    )
+
+    # VISUAL 1: CATEGORY PERFORMANCE
+    category = (
+        df.groupby("Category", as_index=False)
+        .agg(Sales=("Sales", "sum"), Profit=("Profit", "sum"))
+    )
 
     fig1 = px.bar(
         category,
         x="Category",
         y="Sales",
+        color="Profit",
         template="plotly_dark",
-        title="Revenue by Product Category"
+        title="Revenue by Category (Profit-Aware)"
     )
     st.plotly_chart(fig1, use_container_width=True)
 
-    region = df.groupby("Region").agg(
-        Sales=("Sales", "sum"),
-        Profit=("Profit", "sum")
-    ).reset_index()
+    # VISUAL 2: REGION PROFIT MAP
+    region = (
+        df.groupby("Region", as_index=False)
+        .agg(Sales=("Sales", "sum"), Profit=("Profit", "sum"))
+    )
 
     fig2 = px.scatter(
         region,
         x="Sales",
         y="Profit",
         size="Sales",
+        color="Region",
         template="plotly_dark",
-        title="Sales vs Profit by Region"
+        title="Regional Sales vs Profit Efficiency"
     )
     st.plotly_chart(fig2, use_container_width=True)
 
-    margin = (
-        df.groupby("Category")
-        .apply(lambda x: x.Profit.sum() / x.Sales.sum())
-        .reset_index(name="Profit Margin")
+    st.caption(
+        "Top-right regions generate both scale and profit. "
+        "High-sales but low-profit regions need pricing or cost correction."
     )
 
-    fig3 = px.bar(
-        margin,
-        x="Category",
-        y="Profit Margin",
-        template="plotly_dark",
-        title="Profit Efficiency by Category"
+    # VISUAL 3: DISCOUNT IMPACT 
+    df_discount = df.copy()
+
+    df_discount["Discount_Band"] = pd.cut(
+        df_discount["Discount"],
+        bins=[0, 0.2, 0.4, 0.6, 1],
+        labels=["0–20%", "20–40%", "40–60%", "60%+"],
+        include_lowest=True
     )
+
+    discount_effect = (
+        df_discount
+        .groupby("Discount_Band", as_index=False)
+        .agg(
+            Avg_Sales=("Sales", "mean"),
+            Avg_Profit=("Profit", "mean")
+        )
+    )
+
+    fig3 = px.line(
+        discount_effect,
+        x="Discount_Band",
+        y=["Avg_Sales", "Avg_Profit"],
+        template="plotly_dark",
+        title="Impact of Discounting on Sales & Profit"
+    )
+
+    fig3.update_traces(line=dict(width=3))
     st.plotly_chart(fig3, use_container_width=True)
 
-# ======================================================
-# PAGE 3 — SALES FORECASTING 
-# ======================================================
-def forecast_page():
-    st.markdown("## Sales Forecasting")
-    st.caption("Forward-looking revenue estimates for planning and risk assessment")
+    # PRODUCT PERFORMANCE INTELLIGENCE
 
-    model = joblib.load(BASE_DIR / "models/sales_forecasting.pkl")
+    st.markdown("### Product Portfolio Performance")
+    st.caption("Revenue vs profitability view to guide pricing, marketing, and portfolio decisions")
 
-    df = pd.read_csv(
-        BASE_DIR / "data/processed/featured_data.csv",
-        parse_dates=["Order Date"]
+    product_perf = (
+        df.groupby("Product Name", as_index=False)
+        .agg(
+            Total_Sales=("Sales", "sum"),
+            Total_Profit=("Profit", "sum"),
+            Quantity_Sold=("Quantity", "sum")
+    )
     )
 
-    monthly = df.groupby(pd.Grouper(key="Order Date", freq="ME")).agg(
-        Actual_Sales=("Sales", "sum"),
-        Profit=("Profit", "sum"),
-        Discount=("Discount", "mean"),
-        Quantity=("Quantity", "sum")
-    ).reset_index()
-
-    monthly["profit_margin"] = monthly.Profit / (monthly.Profit.abs() + 1)
-    monthly["month"] = monthly["Order Date"].dt.month
-    monthly["year"] = monthly["Order Date"].dt.year
-
-    X = monthly[["Profit", "Discount", "Quantity", "profit_margin", "month", "year"]]
-    monthly["Predicted Sales"] = model.predict(X)
-
-    monthly["Upper_Bound"] = monthly["Predicted Sales"] * 1.12
-    monthly["Lower_Bound"] = monthly["Predicted Sales"] * 0.88
-
-    latest_actual = monthly.iloc[-1]["Actual_Sales"]
-    next_forecast = monthly.iloc[-1]["Predicted Sales"]
-    uncertainty = (
-        monthly.iloc[-1]["Upper_Bound"] - monthly.iloc[-1]["Lower_Bound"]
-    ) / next_forecast
-
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Last Month Sales", f"${latest_actual:,.0f}")
-    c2.metric("Next Month Forecast", f"${next_forecast:,.0f}")
-    c3.metric("Forecast Uncertainty", f"{uncertainty*100:.1f}%")
-
-    plot_df = monthly.tail(18)
-
-    fig = px.line(
-        plot_df,
-        x="Order Date",
-        y=["Actual_Sales", "Predicted Sales"],
-        template="plotly_dark",
-        title="Actual vs Forecasted Sales"
+    # PRODUCT PERFORMANCE INTELLIGENCE
+    st.markdown("### Product Portfolio Intelligence")
+    st.caption(
+        "Identifies products that drive scale vs profitability to guide pricing, promotion, and assortment decisions"
     )
 
-    fig.update_traces(line=dict(width=3))
-    fig.update_layout(hovermode="x unified")
+    product_perf = (
+        df.groupby("Product Name", as_index=False)
+        .agg(
+            Total_Sales=("Sales", "sum"),
+            Total_Profit=("Profit", "sum"),
+            Quantity_Sold=("Quantity", "sum")
+        )
+    )
 
-    st.plotly_chart(fig, use_container_width=True)
+    top_sales_product = product_perf.sort_values(
+        "Total_Sales", ascending=False
+    ).iloc[0]
 
-# ======================================================
-# PAGE 4 — CUSTOMER INSIGHTS
-# ======================================================
-def customer_page():
-    st.markdown("## Customer Insights")
-    st.caption("Customer value, risk, and retention strategy")
+    top_profit_product = product_perf.sort_values(
+        "Total_Profit", ascending=False
+    ).iloc[0]
 
-    # ----------------------------------
-    # Persona Mapping
-    # ----------------------------------
-    persona_map = {
-        0: "Champions",
-        1: "Loyal",
-        2: "At Risk",
-        3: "New"
-    }
-    rfm["Persona"] = rfm["Segment"].map(persona_map)
-
-    # ----------------------------------
-    # CLV Proxy
-    # ----------------------------------
-    rfm["CLV_Proxy"] = rfm["Monetary"] * rfm["Frequency"]
-
-    # ----------------------------------
-    # Concentration Metric (Top 20%)
-    # ----------------------------------
-    top_20 = rfm.sort_values("Monetary", ascending=False).head(int(len(rfm) * 0.2))
-    concentration = top_20["Monetary"].sum() / rfm["Monetary"].sum()
-
-    # ----------------------------------
-    # KPI Row
-    # ----------------------------------
-    c1, c2, c3 = st.columns(3)
+    c1, c2 = st.columns(2)
 
     c1.metric(
-        "Total Customers",
-        rfm["Customer ID"].nunique()
+        "Revenue Driver Product",
+        top_sales_product["Product Name"],
+        f"${top_sales_product['Total_Sales']:,.0f}"
     )
 
     c2.metric(
-        "Revenue from Top 20%",
-        f"{concentration * 100:.1f}%"
+        "Profit Driver Product",
+        top_profit_product["Product Name"],
+        f"${top_profit_product['Total_Profit']:,.0f}"
     )
 
+    # Top 10 Products Table
+    st.markdown("#### Top 10 Products by Revenue")
+
+    top10 = (
+        product_perf
+        .sort_values("Total_Sales", ascending=False)
+        .head(10)
+    )
+
+    st.dataframe(
+        top10.style.format({
+            "Total_Sales": "${:,.0f}",
+            "Total_Profit": "${:,.0f}",
+            "Quantity_Sold": "{:,.0f}"
+        }),
+        use_container_width=True
+    )
+
+
+# SALES FORECASTING
+def forecast_page():
+    st.markdown("## Revenue Risk & Business Planning")
+
+    df = data["forecast"].copy()
+    df["Error"] = df["Sales"] - df["gbr_forecast"]
+    df["Abs_Error"] = df["Error"].abs()
+
+    # EXECUTIVE KPIs (DECISION LEVEL)
+    total_forecast = df["gbr_forecast"].sum()
+    total_actual = df["Sales"].sum()
+    revenue_risk = df["Abs_Error"].sum()
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Total Forecasted Revenue", f"${total_forecast:,.0f}")
+    c2.metric("Revenue Volatility (Risk)", f"${revenue_risk:,.0f}")
     c3.metric(
-        "At-Risk Customers",
-        (rfm["Persona"] == "At Risk").sum()
+        "Forecast Bias",
+        "Over Forecast"
+        if df["Error"].mean() < 0 else "Under Forecast"
     )
 
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # ----------------------------------
-    # Customer Segment Distribution
-    # ----------------------------------
-    fig1 = px.pie(
-        rfm,
-        names="Persona",
+    # EXECUTIVE VISUAL 1:
+    # ACTUAL vs FORECAST 
+    fig1 = px.line(
+        df,
+        x="Order Date",
+        y=["Sales", "gbr_forecast"],
         template="plotly_dark",
-        title="Customer Segment Distribution"
+        title="Revenue Reality vs Planned Revenue"
     )
-
-    fig1.update_traces(textinfo="percent+label")
-    fig1.update_layout(showlegend=False)
-
+    fig1.update_traces(line=dict(width=3))
     st.plotly_chart(fig1, use_container_width=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # ----------------------------------
-    # Executive CLV View (Median, Ranked)
-    # ----------------------------------
-    clv_summary = (
-        rfm.groupby("Persona", as_index=False)
-        .agg(
-            Median_CLV=("CLV_Proxy", "median"),
-            Avg_CLV=("CLV_Proxy", "mean")
-        )
-        .sort_values("Median_CLV", ascending=False)
+    # EXECUTIVE VISUAL 2:
+    # VOLATILITY HEAT 
+    fig2 = px.bar(
+        df,
+        x="Order Date",
+        y="Abs_Error",
+        template="plotly_dark",
+        title="Daily Revenue Volatility (Risk Exposure)"
     )
+    st.plotly_chart(fig2, use_container_width=True)
+
+    # EXECUTIVE VISUAL 3:
+    # BEST / WORST CASE SCENARIOS
+    scenario = pd.DataFrame({
+        "Scenario": ["Best Case", "Planned", "Worst Case"],
+        "Revenue": [
+            total_forecast + revenue_risk,
+            total_forecast,
+            total_forecast - revenue_risk
+        ]
+    })
+
+    fig3 = px.bar(
+        scenario,
+        x="Scenario",
+        y="Revenue",
+        template="plotly_dark",
+        title="Revenue Scenarios for Planning"
+    )
+    st.plotly_chart(fig3, use_container_width=True)
+
+# CUSTOMER INSIGHTS
+def customer_page():
+    st.markdown("## Customer Intelligence & Growth Strategy")
+
+    rfm = data["customers"]
+    kpis = data["customer_kpis"].iloc[0]
+
+    # Top KPIs
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Total Customers", int(kpis["total_customers"]))
+    c2.metric("Revenue from Top 20%", f"{kpis['revenue_concentration']*100:.1f}%")
+    c3.metric("High-Risk Customers", int(kpis["high_risk_customers"]))
+
+    # Segment Distribution
+    fig1 = px.pie(
+        rfm,
+        names="Business_Action",
+        template="plotly_dark",
+        title="Customer Strategy Segmentation"
+    )
+    st.plotly_chart(fig1, use_container_width=True)
+
+    # CLV by Segment
+    clv_seg = rfm.groupby("Business_Action", as_index=False)["CLV"].sum()
 
     fig2 = px.bar(
-        clv_summary,
-        x="Persona",
-        y="Median_CLV",
-        text=clv_summary["Median_CLV"].round(0),
+        clv_seg,
+        x="Business_Action",
+        y="CLV",
         template="plotly_dark",
-        title="Median Customer Lifetime Value by Segment"
+        title="Customer Lifetime Value by Segment"
     )
-
-    fig2.update_traces(
-        textposition="outside",
-        cliponaxis=False
-    )
-
-    fig2.update_layout(
-        yaxis_title="Median Customer Lifetime Value",
-        xaxis_title="Customer Segment",
-        uniformtext_minsize=10,
-        uniformtext_mode="hide"
-    )
-
     st.plotly_chart(fig2, use_container_width=True)
-# ======================================================
+
+    # Churn Risk Table
+    high_risk = rfm[rfm["Churn_Risk"] == 1].sort_values("Monetary", ascending=False).head(10)
+
+    st.markdown("### 🚨 Top Revenue Customers at Churn Risk")
+    st.dataframe(
+        high_risk[["Customer ID", "Recency", "Frequency", "Monetary", "CLV"]],
+        use_container_width=True
+    )
+
+    st.success(
+        "🎯 **Action Plan**:\n"
+        "- Retain high-CLV churn-risk customers immediately\n"
+        "- Upsell loyal segments\n"
+        "- Reduce dependency on top 20% revenue customers"
+    )
+
 # ROUTER
-# ======================================================
 if st.session_state.page == "Executive":
     executive_page()
-
 elif st.session_state.page == "Sales":
     sales_page()
-
 elif st.session_state.page == "Forecast":
     forecast_page()
-
 elif st.session_state.page == "Customers":
     customer_page()
