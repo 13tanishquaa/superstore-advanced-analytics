@@ -128,49 +128,59 @@ def kpi(label, value):
 # EXECUTIVE OVERVIEW
 def executive_page():
     st.markdown("## Executive Overview")
-    st.caption("Business health, momentum, and profitability")
+    st.caption("Overall business health and long-term growth signals")
 
-    df = data["executive"]
+    df = data["executive"].copy()
+
+    # LIFETIME BUSINESS METRICS
+    lifetime_sales = df["total_sales"].sum()
+    lifetime_profit = df["total_profit"].sum()
+    lifetime_margin = lifetime_profit / lifetime_sales
+
+    # RECENT MOMENTUM (MoM)
     latest = df.iloc[-1]
+    prev = df.iloc[-2]
+
+    sales_mom = (latest["total_sales"] - prev["total_sales"]) / prev["total_sales"]
 
     c1, c2, c3, c4 = st.columns(4)
-    kpi("Total Sales", f"${latest['total_sales']:,.0f}")
-    kpi("Total Profit", f"${latest['total_profit']:,.0f}")
-    kpi("Profit Margin", f"{latest['profit_margin']*100:.2f}%")
-    kpi("Sales MoM Growth", f"{latest['sales_mom']*100:.1f}%")
 
-    df["Sales_Index"] = df.total_sales / df.total_sales.iloc[0] * 100
-    df["Profit_Index"] = df.total_profit / df.total_profit.iloc[0] * 100
+    c1.metric("Total Sales (Lifetime)", f"${lifetime_sales:,.0f}")
+    c2.metric("Total Profit (Lifetime)", f"${lifetime_profit:,.0f}")
+    c3.metric("Profit Margin", f"{lifetime_margin*100:.2f}%")
+    c4.metric(
+        "Sales MoM Growth",
+        f"{sales_mom*100:.1f}%",
+        delta=f"{sales_mom*100:.1f}%"
+    )
+
+    st.markdown("---")
+
+    # INDEXED GROWTH TRAJECTORY
+    df["Sales_Index"] = df["total_sales"] / df["total_sales"].iloc[0] * 100
+    df["Profit_Index"] = df["total_profit"] / df["total_profit"].iloc[0] * 100
 
     fig = px.line(
         df,
         x="Order_Month",
         y=["Sales_Index", "Profit_Index"],
         template="plotly_dark",
-        title="Growth Trajectory (Indexed)"
+        title="Growth Trajectory (Indexed to Start of Business)"
     )
     fig.update_traces(line=dict(width=3))
+
     st.plotly_chart(fig, use_container_width=True)
+
+    st.caption(
+        "Indexed growth highlights whether profit is scaling along with revenue over time."
+    )
 
 # SALES PERFORMANCE
 def sales_page():
     st.markdown("## Sales Performance")
+    st.caption("Where revenue is generated and profitability is gained or lost")
 
     df = data["sales"]
-
-    # EXECUTIVE KPIs
-    total_sales = df["Sales"].sum()
-    total_profit = df["Profit"].sum()
-    profit_margin = total_profit / total_sales
-
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Total Revenue", f"${total_sales:,.0f}")
-    c2.metric("Total Profit", f"${total_profit:,.0f}")
-    c3.metric("Overall Margin", f"{profit_margin*100:.1f}%")
-
-    st.caption(
-        "Revenue shows scale, profit shows health, and margin reflects pricing efficiency."
-    )
 
     # VISUAL 1: CATEGORY PERFORMANCE
     category = (
@@ -209,6 +219,13 @@ def sales_page():
         "Top-right regions generate both scale and profit. "
         "High-sales but low-profit regions need pricing or cost correction."
     )
+    best_region = region.sort_values("Profit", ascending=False).iloc[0]["Region"]
+    worst_region = region.sort_values("Profit").iloc[0]["Region"]
+
+    st.info(
+        f"📍 **Insight:** {best_region} leads in profit contribution, while "
+        f"{worst_region} requires pricing or cost optimization."
+    )
 
     # VISUAL 3: DISCOUNT IMPACT 
     df_discount = df.copy()
@@ -240,19 +257,6 @@ def sales_page():
     fig3.update_traces(line=dict(width=3))
     st.plotly_chart(fig3, use_container_width=True)
 
-    # PRODUCT PERFORMANCE INTELLIGENCE
-
-    st.markdown("### Product Portfolio Performance")
-    st.caption("Revenue vs profitability view to guide pricing, marketing, and portfolio decisions")
-
-    product_perf = (
-        df.groupby("Product Name", as_index=False)
-        .agg(
-            Total_Sales=("Sales", "sum"),
-            Total_Profit=("Profit", "sum"),
-            Quantity_Sold=("Quantity", "sum")
-    )
-    )
 
     # PRODUCT PERFORMANCE INTELLIGENCE
     st.markdown("### Product Portfolio Intelligence")
@@ -276,7 +280,6 @@ def sales_page():
     top_profit_product = product_perf.sort_values(
         "Total_Profit", ascending=False
     ).iloc[0]
-
     c1, c2 = st.columns(2)
 
     c1.metric(
@@ -374,6 +377,14 @@ def forecast_page():
         title="Revenue Scenarios for Planning"
     )
     st.plotly_chart(fig3, use_container_width=True)
+
+    st.success(
+    "📌 **Executive Takeaway**:\n"
+    "- Forecast provides a planning range, not a single number\n"
+    "- High volatility periods need inventory & staffing buffers\n"
+    "- Revenue risk should guide conservative vs aggressive growth bets"
+)
+
 
 # CUSTOMER INSIGHTS
 def customer_page():
